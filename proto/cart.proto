@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+option go_package = "go/pkg/proto";
+
+package cart_service.v1;
+
+service CartService {
+    rpc CreateCart(CartRequest) returns (CartResponse) {}
+    rpc UpdateCart(CartRequestItem) returns (CartResponse) {}
+    rpc DeleteCart(CartRequestItem) returns (CartResponse) {}
+    rpc DeleteUserCart(CartRequestItem) returns (CartResponse) {}
+    rpc ListCart(Empty) returns (ListCartResponse) {}
+    rpc ListByRestaurant( CartRequestItem) returns ( ListCartResponse) {}
+    rpc ListCartByUser(CartRequestItem) returns (ListCartResponse) {}
+    rpc ListCartByRestaurantStream(stream CartRequestItem) returns ( stream ListCartResponse) {}
+}
+
+message Empty {
+}
+
+message CartRequestItem {
+   string requestId = 1;
+   int32 quantity = 2;
+   string item = 3;
+   string packageID = 4;
+   string userID = 5;
+}
+
+message CartResponse {
+   string status = 1;
+   string message = 2;
+   CartItems data = 3;
+}
+    
+message CartItems {
+    string packageID = 1;
+    string packageName = 2;
+    string description = 3;
+    double basePrice = 4;
+    string serviceAreaID = 6;
+    string image = 7;
+    string userID = 8;
+    int32 quantity = 9;
+    repeated CartPackageItem items = 10;
+    string cartID = 11;
+}
+
+message CartPackageItem {
+  string itemID = 1;
+  string name = 2;
+  string description = 3;
+  string itemCategoryID = 4;
+  string image = 5;
+  string unit = 6;
+}
+
+message CartRequest {
+    string packageID = 1;
+    string packageName = 2;
+    string description = 3;
+    double basePrice = 4;
+    string serviceAreaID = 6;
+    string image = 7;
+    string userID = 8;
+    int32 quantity = 9;
+    repeated CartPackageItem items = 10;
+}
+
+message ListCartResponse {  
+    string status = 1;
+    string message = 2;
+    repeated CartItems data = 3;
+    int32 count = 4;
+}
+
+

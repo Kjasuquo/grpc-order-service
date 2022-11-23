@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+option go_package = "order/proto";
+
+package order.v1;
+
+service Order {
+    // NewOrder payload for create order
+    rpc CreateNewOrder (NewOrderRequest) returns(NewOrderResponse){}
+    rpc FetchOrdersByUser (NewGetUserOrderRequest) returns (stream NewGetUserOrderResponse){}
+}
+
+// New Order
+message NewOrderRequest {
+    string order_id = 1;
+    string reference = 2;
+    double subtotal = 3;
+    double delivery_cost = 4;
+    double total_cost = 5;
+    string delivery_Type = 6;
+    string user_id = 7;
+    InNewOrderDeliveryAddress delivery_address = 8;
+    repeated InNewOrderItems order_items = 9;
+
+}
+
+message NewOrderResponse{
+    string message = 1;
+    string status = 2;
+}
+
+message InNewOrderDeliveryAddress{
+    string address = 1;
+    InNewOrderCoordinates coordinates = 2;
+}
+
+message InNewOrderCoordinates{
+    double latitude = 1;
+    double longitude = 2;
+}
+
+message InNewOrderItems {
+    string packageID = 1;
+    string packageName = 2;
+    string description = 3;
+    double basePrice = 4;
+    string serviceAreaID = 6;
+    string image = 7;
+    string userID = 8;
+    int32 quantity = 9;
+    repeated InNewOrderPackageItem items = 10;
+    string cartID = 11;
+}
+
+message InNewOrderPackageItem {
+    string itemID = 1;
+    string name = 2;
+    string description = 3;
+    string itemCategoryID = 4;
+    string image = 5;
+    string unit = 6;
+}
+
+message NewGetUserOrderRequest {
+    string user_id = 1;
+}
+
+message NewGetUserOrderResponse {
+    NewOrderRequest data = 1;
+    string status = 3;
+}
