@@ -37,6 +37,7 @@ type CartPackageItem struct {
 	ItemCategory string `protobuf:"bytes,2,opt,name=itemCategory,proto3" json:"itemCategory,omitempty"`
 	Image        string `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	Unit         string `protobuf:"bytes,2,opt,name=unit,proto3" json:"unit,omitempty"`
+	UserId       string `protobuf:"bytes,2,opt,name=userId,proto3" json:"userId,omitempty"`
 }
 
 type OrderDeliveryAddress struct {

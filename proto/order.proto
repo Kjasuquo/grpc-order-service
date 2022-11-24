@@ -8,6 +8,8 @@ service Order {
     // NewOrder payload for create order
     rpc CreateNewOrder (NewOrderRequest) returns(NewOrderResponse){}
     rpc FetchOrdersByUser (NewGetUserOrderRequest) returns (stream NewGetUserOrderResponse){}
+    rpc DeleteUserOrders (DeleteUserOrdersRequest) returns (DeleteUserOrdersResponse){}
+    rpc UpdateOrderStatus (UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse){}
 }
 
 // New Order
@@ -21,6 +23,7 @@ message NewOrderRequest {
     string user_id = 7;
     InNewOrderDeliveryAddress delivery_address = 8;
     repeated InNewOrderItems order_items = 9;
+    string status = 10;
 
 }
 
@@ -68,4 +71,23 @@ message NewGetUserOrderRequest {
 message NewGetUserOrderResponse {
     NewOrderRequest data = 1;
     string status = 3;
+}
+
+message DeleteUserOrdersRequest {
+    string user_id = 1;
+}
+
+message DeleteUserOrdersResponse{
+    string message = 1;
+    string status = 2;
+}
+
+message UpdateOrderStatusRequest {
+    string order_id = 1;
+    string status = 2;
+}
+
+message UpdateOrderStatusResponse {
+    string message = 1;
+    string status = 2;
 }

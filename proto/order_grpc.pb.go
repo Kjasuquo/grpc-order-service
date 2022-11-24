@@ -25,6 +25,8 @@ type OrderClient interface {
 	// NewOrder payload for create order
 	CreateNewOrder(ctx context.Context, in *NewOrderRequest, opts ...grpc.CallOption) (*NewOrderResponse, error)
 	FetchOrdersByUser(ctx context.Context, in *NewGetUserOrderRequest, opts ...grpc.CallOption) (Order_FetchOrdersByUserClient, error)
+	DeleteUserOrders(ctx context.Context, in *DeleteUserOrdersRequest, opts ...grpc.CallOption) (*DeleteUserOrdersResponse, error)
+	UpdateOrderStatus(ctx context.Context, in *UpdateOrderStatusRequest, opts ...grpc.CallOption) (*UpdateOrderStatusResponse, error)
 }
 
 type orderClient struct {
@@ -76,6 +78,24 @@ func (x *orderFetchOrdersByUserClient) Recv() (*NewGetUserOrderResponse, error) 
 	return m, nil
 }
 
+func (c *orderClient) DeleteUserOrders(ctx context.Context, in *DeleteUserOrdersRequest, opts ...grpc.CallOption) (*DeleteUserOrdersResponse, error) {
+	out := new(DeleteUserOrdersResponse)
+	err := c.cc.Invoke(ctx, "/order.v1.Order/DeleteUserOrders", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderClient) UpdateOrderStatus(ctx context.Context, in *UpdateOrderStatusRequest, opts ...grpc.CallOption) (*UpdateOrderStatusResponse, error) {
+	out := new(UpdateOrderStatusResponse)
+	err := c.cc.Invoke(ctx, "/order.v1.Order/UpdateOrderStatus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OrderServer is the server API for Order service.
 // All implementations must embed UnimplementedOrderServer
 // for forward compatibility
@@ -83,6 +103,8 @@ type OrderServer interface {
 	// NewOrder payload for create order
 	CreateNewOrder(context.Context, *NewOrderRequest) (*NewOrderResponse, error)
 	FetchOrdersByUser(*NewGetUserOrderRequest, Order_FetchOrdersByUserServer) error
+	DeleteUserOrders(context.Context, *DeleteUserOrdersRequest) (*DeleteUserOrdersResponse, error)
+	UpdateOrderStatus(context.Context, *UpdateOrderStatusRequest) (*UpdateOrderStatusResponse, error)
 	mustEmbedUnimplementedOrderServer()
 }
 
@@ -95,6 +117,12 @@ func (UnimplementedOrderServer) CreateNewOrder(context.Context, *NewOrderRequest
 }
 func (UnimplementedOrderServer) FetchOrdersByUser(*NewGetUserOrderRequest, Order_FetchOrdersByUserServer) error {
 	return status.Errorf(codes.Unimplemented, "method FetchOrdersByUser not implemented")
+}
+func (UnimplementedOrderServer) DeleteUserOrders(context.Context, *DeleteUserOrdersRequest) (*DeleteUserOrdersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteUserOrders not implemented")
+}
+func (UnimplementedOrderServer) UpdateOrderStatus(context.Context, *UpdateOrderStatusRequest) (*UpdateOrderStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateOrderStatus not implemented")
 }
 func (UnimplementedOrderServer) mustEmbedUnimplementedOrderServer() {}
 
@@ -148,6 +176,42 @@ func (x *orderFetchOrdersByUserServer) Send(m *NewGetUserOrderResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Order_DeleteUserOrders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteUserOrdersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServer).DeleteUserOrders(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/order.v1.Order/DeleteUserOrders",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServer).DeleteUserOrders(ctx, req.(*DeleteUserOrdersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Order_UpdateOrderStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateOrderStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServer).UpdateOrderStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/order.v1.Order/UpdateOrderStatus",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServer).UpdateOrderStatus(ctx, req.(*UpdateOrderStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Order_ServiceDesc is the grpc.ServiceDesc for Order service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -158,6 +222,14 @@ var Order_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateNewOrder",
 			Handler:    _Order_CreateNewOrder_Handler,
+		},
+		{
+			MethodName: "DeleteUserOrders",
+			Handler:    _Order_DeleteUserOrders_Handler,
+		},
+		{
+			MethodName: "UpdateOrderStatus",
+			Handler:    _Order_UpdateOrderStatus_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

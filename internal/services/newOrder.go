@@ -50,6 +50,7 @@ func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewO
 				ItemCategory: item.ItemCategoryID,
 				Image:        item.Image,
 				Unit:         item.Unit,
+				UserId:       orderItem.UserID,
 			})
 		}
 		cartI := models.CartItem{
@@ -173,6 +174,7 @@ func (s *OrderServiceServer) FetchOrdersByUser(req *proto.NewGetUserOrderRequest
 				},
 			},
 			OrderItems: cartItems,
+			Status:     order.Status,
 		}
 
 		orderItems = append(orderItems, response)
@@ -192,4 +194,41 @@ func (s *OrderServiceServer) FetchOrdersByUser(req *proto.NewGetUserOrderRequest
 	}
 
 	return nil
+}
+
+func (s *OrderServiceServer) DeleteUserOrders(ctx context.Context, req *proto.DeleteUserOrdersRequest) (*proto.DeleteUserOrdersResponse, error) {
+	userId := req.GetUserId()
+	if userId == "" {
+		return nil, status.Error(codes.InvalidArgument,
+			"user ID is required")
+	}
+
+	err := s.Order.DeleteOrderByUserID(userId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Error deleting orders: %v\n", err))
+	}
+
+	return &proto.DeleteUserOrdersResponse{
+		Message: "successful",
+		Status:  codes.OK.String(),
+	}, nil
+}
+
+func (s *OrderServiceServer) UpdateOrderStatus(ctx context.Context, req *proto.UpdateOrderStatusRequest) (*proto.UpdateOrderStatusResponse, error) {
+	orderId := req.GetOrderId()
+	sta := req.GetStatus()
+	if orderId == "" {
+		return nil, status.Error(codes.InvalidArgument,
+			"order ID is required")
+	}
+
+	_, err := s.Order.UpdateOrder(orderId, sta)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Error updating order status")
+	}
+
+	return &proto.UpdateOrderStatusResponse{
+		Message: "successful",
+		Status:  codes.OK.String(),
+	}, nil
 }
