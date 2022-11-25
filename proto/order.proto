@@ -3,6 +3,7 @@ syntax = "proto3";
 option go_package = "order/proto";
 
 package order.v1;
+import "google/protobuf/empty.proto";
 
 service Order {
     // NewOrder payload for create order
@@ -10,6 +11,9 @@ service Order {
     rpc FetchOrdersByUser (NewGetUserOrderRequest) returns (stream NewGetUserOrderResponse){}
     rpc DeleteUserOrders (DeleteUserOrdersRequest) returns (DeleteUserOrdersResponse){}
     rpc UpdateOrderStatus (UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse){}
+    rpc FetchOderByStatus (GetStatusRequest) returns (stream GetStatusResponse){}
+    rpc FetchAllOrders (google.protobuf.Empty) returns (stream AllOrdersResponse){}
+    rpc GetDeliveryCode (GetDeliveryCodeRequest) returns (GetDeliveryCodeResponse){}
 }
 
 // New Order
@@ -23,8 +27,8 @@ message NewOrderRequest {
     string user_id = 7;
     InNewOrderDeliveryAddress delivery_address = 8;
     repeated InNewOrderItems order_items = 9;
-    string status = 10;
-
+    string paymentMethod = 10;
+    string currency = 11;
 }
 
 message NewOrderResponse{
@@ -64,15 +68,17 @@ message InNewOrderPackageItem {
     string unit = 6;
 }
 
+// For getting orders by a user
 message NewGetUserOrderRequest {
     string user_id = 1;
 }
 
 message NewGetUserOrderResponse {
-    NewOrderRequest data = 1;
-    string status = 3;
+    OrderProperties data = 1;
+    string status = 2;
 }
 
+// For deleting a user order
 message DeleteUserOrdersRequest {
     string user_id = 1;
 }
@@ -82,6 +88,7 @@ message DeleteUserOrdersResponse{
     string status = 2;
 }
 
+// For updating order status
 message UpdateOrderStatusRequest {
     string order_id = 1;
     string status = 2;
@@ -90,4 +97,50 @@ message UpdateOrderStatusRequest {
 message UpdateOrderStatusResponse {
     string message = 1;
     string status = 2;
+}
+
+// For Getting orders based on the status
+message GetStatusRequest{
+    string user_id = 1;
+    string status = 2;
+}
+
+message GetStatusResponse{
+    OrderProperties data = 1;
+    string status = 3;
+}
+
+// Response for all orders
+message AllOrdersResponse{
+    OrderProperties data = 1;
+    string status = 2;
+}
+
+// For getting delivery code by order_id
+message GetDeliveryCodeRequest{
+    string order_id = 1;
+}
+
+message GetDeliveryCodeResponse{
+    int32 delivery_code = 1;
+    string status = 2;
+}
+
+message OrderProperties{
+    string order_id = 1;
+    string reference = 2;
+    double subtotal = 3;
+    double delivery_cost = 4;
+    double total_cost = 5;
+    string delivery_Type = 6;
+    string user_id = 7;
+    InNewOrderDeliveryAddress delivery_address = 8;
+    repeated InNewOrderItems order_items = 9;
+    string status = 10;
+    string created_at = 11;
+    string updated_at = 12;
+    string currency = 13;
+    string paymentMethod = 14;
+    int32 delivery_code = 15;
+    string delivery_time = 16;
 }

@@ -24,7 +24,7 @@ type OrderServiceServer struct {
 }
 
 func Start() {
-	// var configStruct config.Config?
+	//var configStruct config.Config?
 	configs := config.ReadConfigs(".")
 
 	PORT := fmt.Sprintf(":%s", configs.GrpcPort)

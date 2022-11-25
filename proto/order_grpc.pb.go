@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -27,6 +28,9 @@ type OrderClient interface {
 	FetchOrdersByUser(ctx context.Context, in *NewGetUserOrderRequest, opts ...grpc.CallOption) (Order_FetchOrdersByUserClient, error)
 	DeleteUserOrders(ctx context.Context, in *DeleteUserOrdersRequest, opts ...grpc.CallOption) (*DeleteUserOrdersResponse, error)
 	UpdateOrderStatus(ctx context.Context, in *UpdateOrderStatusRequest, opts ...grpc.CallOption) (*UpdateOrderStatusResponse, error)
+	FetchOderByStatus(ctx context.Context, in *GetStatusRequest, opts ...grpc.CallOption) (Order_FetchOderByStatusClient, error)
+	FetchAllOrders(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Order_FetchAllOrdersClient, error)
+	GetDeliveryCode(ctx context.Context, in *GetDeliveryCodeRequest, opts ...grpc.CallOption) (*GetDeliveryCodeResponse, error)
 }
 
 type orderClient struct {
@@ -96,6 +100,79 @@ func (c *orderClient) UpdateOrderStatus(ctx context.Context, in *UpdateOrderStat
 	return out, nil
 }
 
+func (c *orderClient) FetchOderByStatus(ctx context.Context, in *GetStatusRequest, opts ...grpc.CallOption) (Order_FetchOderByStatusClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Order_ServiceDesc.Streams[1], "/order.v1.Order/FetchOderByStatus", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &orderFetchOderByStatusClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Order_FetchOderByStatusClient interface {
+	Recv() (*GetStatusResponse, error)
+	grpc.ClientStream
+}
+
+type orderFetchOderByStatusClient struct {
+	grpc.ClientStream
+}
+
+func (x *orderFetchOderByStatusClient) Recv() (*GetStatusResponse, error) {
+	m := new(GetStatusResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *orderClient) FetchAllOrders(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Order_FetchAllOrdersClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Order_ServiceDesc.Streams[2], "/order.v1.Order/FetchAllOrders", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &orderFetchAllOrdersClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Order_FetchAllOrdersClient interface {
+	Recv() (*AllOrdersResponse, error)
+	grpc.ClientStream
+}
+
+type orderFetchAllOrdersClient struct {
+	grpc.ClientStream
+}
+
+func (x *orderFetchAllOrdersClient) Recv() (*AllOrdersResponse, error) {
+	m := new(AllOrdersResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *orderClient) GetDeliveryCode(ctx context.Context, in *GetDeliveryCodeRequest, opts ...grpc.CallOption) (*GetDeliveryCodeResponse, error) {
+	out := new(GetDeliveryCodeResponse)
+	err := c.cc.Invoke(ctx, "/order.v1.Order/GetDeliveryCode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OrderServer is the server API for Order service.
 // All implementations must embed UnimplementedOrderServer
 // for forward compatibility
@@ -105,6 +182,9 @@ type OrderServer interface {
 	FetchOrdersByUser(*NewGetUserOrderRequest, Order_FetchOrdersByUserServer) error
 	DeleteUserOrders(context.Context, *DeleteUserOrdersRequest) (*DeleteUserOrdersResponse, error)
 	UpdateOrderStatus(context.Context, *UpdateOrderStatusRequest) (*UpdateOrderStatusResponse, error)
+	FetchOderByStatus(*GetStatusRequest, Order_FetchOderByStatusServer) error
+	FetchAllOrders(*emptypb.Empty, Order_FetchAllOrdersServer) error
+	GetDeliveryCode(context.Context, *GetDeliveryCodeRequest) (*GetDeliveryCodeResponse, error)
 	mustEmbedUnimplementedOrderServer()
 }
 
@@ -123,6 +203,15 @@ func (UnimplementedOrderServer) DeleteUserOrders(context.Context, *DeleteUserOrd
 }
 func (UnimplementedOrderServer) UpdateOrderStatus(context.Context, *UpdateOrderStatusRequest) (*UpdateOrderStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateOrderStatus not implemented")
+}
+func (UnimplementedOrderServer) FetchOderByStatus(*GetStatusRequest, Order_FetchOderByStatusServer) error {
+	return status.Errorf(codes.Unimplemented, "method FetchOderByStatus not implemented")
+}
+func (UnimplementedOrderServer) FetchAllOrders(*emptypb.Empty, Order_FetchAllOrdersServer) error {
+	return status.Errorf(codes.Unimplemented, "method FetchAllOrders not implemented")
+}
+func (UnimplementedOrderServer) GetDeliveryCode(context.Context, *GetDeliveryCodeRequest) (*GetDeliveryCodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDeliveryCode not implemented")
 }
 func (UnimplementedOrderServer) mustEmbedUnimplementedOrderServer() {}
 
@@ -212,6 +301,66 @@ func _Order_UpdateOrderStatus_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Order_FetchOderByStatus_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetStatusRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OrderServer).FetchOderByStatus(m, &orderFetchOderByStatusServer{stream})
+}
+
+type Order_FetchOderByStatusServer interface {
+	Send(*GetStatusResponse) error
+	grpc.ServerStream
+}
+
+type orderFetchOderByStatusServer struct {
+	grpc.ServerStream
+}
+
+func (x *orderFetchOderByStatusServer) Send(m *GetStatusResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Order_FetchAllOrders_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(emptypb.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(OrderServer).FetchAllOrders(m, &orderFetchAllOrdersServer{stream})
+}
+
+type Order_FetchAllOrdersServer interface {
+	Send(*AllOrdersResponse) error
+	grpc.ServerStream
+}
+
+type orderFetchAllOrdersServer struct {
+	grpc.ServerStream
+}
+
+func (x *orderFetchAllOrdersServer) Send(m *AllOrdersResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Order_GetDeliveryCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDeliveryCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServer).GetDeliveryCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/order.v1.Order/GetDeliveryCode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServer).GetDeliveryCode(ctx, req.(*GetDeliveryCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Order_ServiceDesc is the grpc.ServiceDesc for Order service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -231,11 +380,25 @@ var Order_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "UpdateOrderStatus",
 			Handler:    _Order_UpdateOrderStatus_Handler,
 		},
+		{
+			MethodName: "GetDeliveryCode",
+			Handler:    _Order_GetDeliveryCode_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "FetchOrdersByUser",
 			Handler:       _Order_FetchOrdersByUser_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "FetchOderByStatus",
+			Handler:       _Order_FetchOderByStatus_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "FetchAllOrders",
+			Handler:       _Order_FetchAllOrders_Handler,
 			ServerStreams: true,
 		},
 	},

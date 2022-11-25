@@ -11,8 +11,12 @@ type NewOrder struct {
 	DeliveryType string  `protobuf:"bytes,2,opt,name=deliveryType,proto3" json:"deliveryType,omitempty"`
 	UserID       string  `protobuf:"bytes,2,opt,name=userID,proto3" json:"userID,omitempty"`
 	OrderDeliveryAddress
-	CartItems []CartItem `gorm:"foreignKey:CartId"`
-	Status    string     `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	CartItems     []CartItem `gorm:"foreignKey:CartId"`
+	Status        string     `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	DeliveryTime  string     `protobuf:"bytes,2,opt,name=deliverTime,proto3" json:"deliverTime,omitempty"`
+	DeliveryCode  int32      `protobuf:"bytes,2,opt,name=deliveryCode,proto3" json:"deliveryCode,omitempty"`
+	PaymentMethod string     `protobuf:"bytes,2,opt,name=paymentMethod,proto3" json:"paymentMethod,omitempty"`
+	Currency      string     `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"`
 }
 
 type CartItem struct {

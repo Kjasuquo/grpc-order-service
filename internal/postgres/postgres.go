@@ -37,6 +37,7 @@ func (postgresDB *PostgresDB) Init() {
 
 	postgresDB.DB = db
 
+	//err = db.Migrator().DropTable(&models.CartItem{}, &models.CartPackageItem{}, &models.NewOrder{})
 	err = db.AutoMigrate(&models.NewOrder{}, &models.CartItem{}, &models.CartPackageItem{})
 	if err != nil {
 		log.Panic(err)

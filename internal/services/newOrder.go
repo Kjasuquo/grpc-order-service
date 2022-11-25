@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"order_svc/internal/helper"
 	"order_svc/internal/models"
 	"order_svc/internal/rabbitMQ"
 	"order_svc/proto"
+	"strings"
+	"time"
+	//"gitlab.com/grpc-buffer/proto/go/pkg/proto"
 )
 
 func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewOrderRequest) (*proto.NewOrderResponse, error) {
@@ -22,6 +27,8 @@ func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewO
 	latitude := req.GetDeliveryAddress().GetCoordinates().GetLatitude()
 	longitude := req.GetDeliveryAddress().GetCoordinates().GetLongitude()
 	orderItems := req.GetOrderItems()
+	paymentMethod := req.GetPaymentMethod()
+	currency := req.GetCurrency()
 
 	if orderId == "" ||
 		reference == "" ||
@@ -81,6 +88,8 @@ func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewO
 		cartItems = append(cartItems, cartI)
 	}
 
+	deliverCode := helper.DeliveryCode()
+
 	order := &models.NewOrder{
 		OrderID:      orderId,
 		Reference:    reference,
@@ -96,8 +105,12 @@ func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewO
 				Longitude: longitude,
 			},
 		},
-		CartItems: cartItems,
-		Status:    "pending",
+		CartItems:     cartItems,
+		Status:        "pending",
+		DeliveryCode:  deliverCode,
+		PaymentMethod: paymentMethod,
+		Currency:      currency,
+		DeliveryTime:  "not delivered",
 	}
 
 	err := s.Order.CreateNewOrder(order)
@@ -117,13 +130,13 @@ func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewO
 }
 
 func (s *OrderServiceServer) FetchOrdersByUser(req *proto.NewGetUserOrderRequest, stream proto.Order_FetchOrdersByUserServer) error {
-	userId := req.GetUserId()
+	userId := strings.TrimSpace(req.GetUserId())
 	if userId == "" {
 		return status.Error(codes.InvalidArgument,
 			"Cannot fetch orders with empty user id.")
 	}
 
-	var orderItems []*proto.NewOrderRequest
+	var orderItems []*proto.OrderProperties
 	var cartItems []*proto.InNewOrderItems
 	var packageItem []*proto.InNewOrderPackageItem
 
@@ -158,7 +171,7 @@ func (s *OrderServiceServer) FetchOrdersByUser(req *proto.NewGetUserOrderRequest
 			}
 			cartItems = append(cartItems, cartI)
 		}
-		response := &proto.NewOrderRequest{
+		response := &proto.OrderProperties{
 			OrderId:       order.OrderID,
 			Reference:     order.Reference,
 			Subtotal:      order.SubTotal,
@@ -173,8 +186,14 @@ func (s *OrderServiceServer) FetchOrdersByUser(req *proto.NewGetUserOrderRequest
 					Longitude: order.OrderDeliveryAddress.OrderCoordinates.Longitude,
 				},
 			},
-			OrderItems: cartItems,
-			Status:     order.Status,
+			OrderItems:    cartItems,
+			Status:        order.Status,
+			DeliveryCode:  order.DeliveryCode,
+			PaymentMethod: order.PaymentMethod,
+			Currency:      order.Currency,
+			DeliveryTime:  order.DeliveryTime,
+			CreatedAt:     order.CreatedAt.String(),
+			UpdatedAt:     order.UpdatedAt.String(),
 		}
 
 		orderItems = append(orderItems, response)
@@ -217,6 +236,15 @@ func (s *OrderServiceServer) DeleteUserOrders(ctx context.Context, req *proto.De
 func (s *OrderServiceServer) UpdateOrderStatus(ctx context.Context, req *proto.UpdateOrderStatusRequest) (*proto.UpdateOrderStatusResponse, error) {
 	orderId := req.GetOrderId()
 	sta := req.GetStatus()
+	if sta != "pending" {
+		if sta != "completed" {
+			if sta != "cancelled" {
+				return nil, status.Error(codes.InvalidArgument,
+					"status is invalid")
+			}
+		}
+
+	}
 	if orderId == "" {
 		return nil, status.Error(codes.InvalidArgument,
 			"order ID is required")
@@ -227,8 +255,192 @@ func (s *OrderServiceServer) UpdateOrderStatus(ctx context.Context, req *proto.U
 		return nil, status.Error(codes.Internal, "Error updating order status")
 	}
 
+	if sta == "completed" {
+		deliveryTime := time.Now().String()
+		_, err := s.Order.UpdateDeliveryTime(orderId, deliveryTime)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "Error updating delivery time")
+		}
+	}
+
 	return &proto.UpdateOrderStatusResponse{
-		Message: "successful",
+		Message: "successfully  updated order status",
 		Status:  codes.OK.String(),
+	}, nil
+}
+
+func (s *OrderServiceServer) FetchAllOrders(req *emptypb.Empty, stream proto.Order_FetchAllOrdersServer) error {
+	var orderItems []*proto.OrderProperties
+	var cartItems []*proto.InNewOrderItems
+	var packageItem []*proto.InNewOrderPackageItem
+
+	orders, err := s.Order.FetchAllOrders()
+	if err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("Error fetching orders: %v\n", err))
+	}
+	for _, order := range orders {
+		for _, cartItem := range order.CartItems {
+			for _, item := range cartItem.CartPackageItem {
+				PackageI := &proto.InNewOrderPackageItem{
+					ItemID:         item.ItemId,
+					Name:           item.Name,
+					Description:    item.Description,
+					ItemCategoryID: item.ItemCategory,
+					Image:          item.Image,
+					Unit:           item.Unit,
+				}
+				packageItem = append(packageItem, PackageI)
+			}
+			cartI := &proto.InNewOrderItems{
+				PackageID:     cartItem.PackageId,
+				PackageName:   cartItem.PackageName,
+				Description:   cartItem.Description,
+				BasePrice:     cartItem.BasePrice,
+				ServiceAreaID: cartItem.ServiceId,
+				Image:         cartItem.Image,
+				UserID:        cartItem.UserId,
+				Quantity:      cartItem.Quantity,
+				Items:         packageItem,
+				CartID:        cartItem.CartId,
+			}
+			cartItems = append(cartItems, cartI)
+		}
+		response := &proto.OrderProperties{
+			OrderId:       order.OrderID,
+			Reference:     order.Reference,
+			Subtotal:      order.SubTotal,
+			DeliveryCost:  order.DeliveryCost,
+			TotalCost:     order.TotalCost,
+			Delivery_Type: order.DeliveryType,
+			UserId:        order.UserID,
+			DeliveryAddress: &proto.InNewOrderDeliveryAddress{
+				Address: order.OrderDeliveryAddress.Address,
+				Coordinates: &proto.InNewOrderCoordinates{
+					Latitude:  order.OrderDeliveryAddress.OrderCoordinates.Latitude,
+					Longitude: order.OrderDeliveryAddress.OrderCoordinates.Longitude,
+				},
+			},
+			OrderItems:    cartItems,
+			Status:        order.Status,
+			DeliveryCode:  order.DeliveryCode,
+			PaymentMethod: order.PaymentMethod,
+			Currency:      order.Currency,
+			DeliveryTime:  order.DeliveryTime,
+			CreatedAt:     order.CreatedAt.String(),
+			UpdatedAt:     order.UpdatedAt.String(),
+		}
+
+		orderItems = append(orderItems, response)
+	}
+
+	for len(orderItems) > 0 {
+		// send order items in stream
+		for _, orderItem := range orderItems {
+			if err := stream.Send(&proto.AllOrdersResponse{
+				Data:   orderItem,
+				Status: codes.OK.String(),
+			}); err != nil {
+				return status.Errorf(codes.Internal, fmt.Sprintf("Error sending order items: %v\n", err))
+			}
+		}
+		break
+	}
+
+	return nil
+}
+
+func (s *OrderServiceServer) FetchOderByStatus(req *proto.GetStatusRequest, stream proto.Order_FetchOderByStatusServer) error {
+	userId := req.GetUserId()
+	sta := req.GetStatus()
+
+	var orderItems []*proto.OrderProperties
+	var cartItems []*proto.InNewOrderItems
+	var packageItem []*proto.InNewOrderPackageItem
+
+	orders, err := s.Order.FetchUserOrderByStatus(userId, sta)
+	if err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("Error fetching orders: %v\n", err))
+	}
+	for _, order := range orders {
+		for _, cartItem := range order.CartItems {
+			for _, item := range cartItem.CartPackageItem {
+				PackageI := &proto.InNewOrderPackageItem{
+					ItemID:         item.ItemId,
+					Name:           item.Name,
+					Description:    item.Description,
+					ItemCategoryID: item.ItemCategory,
+					Image:          item.Image,
+					Unit:           item.Unit,
+				}
+				packageItem = append(packageItem, PackageI)
+			}
+			cartI := &proto.InNewOrderItems{
+				PackageID:     cartItem.PackageId,
+				PackageName:   cartItem.PackageName,
+				Description:   cartItem.Description,
+				BasePrice:     cartItem.BasePrice,
+				ServiceAreaID: cartItem.ServiceId,
+				Image:         cartItem.Image,
+				UserID:        cartItem.UserId,
+				Quantity:      cartItem.Quantity,
+				Items:         packageItem,
+				CartID:        cartItem.CartId,
+			}
+			cartItems = append(cartItems, cartI)
+		}
+		response := &proto.OrderProperties{
+			OrderId:       order.OrderID,
+			Reference:     order.Reference,
+			Subtotal:      order.SubTotal,
+			DeliveryCost:  order.DeliveryCost,
+			TotalCost:     order.TotalCost,
+			Delivery_Type: order.DeliveryType,
+			UserId:        order.UserID,
+			DeliveryAddress: &proto.InNewOrderDeliveryAddress{
+				Address: order.OrderDeliveryAddress.Address,
+				Coordinates: &proto.InNewOrderCoordinates{
+					Latitude:  order.OrderDeliveryAddress.OrderCoordinates.Latitude,
+					Longitude: order.OrderDeliveryAddress.OrderCoordinates.Longitude,
+				},
+			},
+			OrderItems:    cartItems,
+			Status:        order.Status,
+			DeliveryCode:  order.DeliveryCode,
+			PaymentMethod: order.PaymentMethod,
+			Currency:      order.Currency,
+			DeliveryTime:  order.DeliveryTime,
+			CreatedAt:     order.CreatedAt.String(),
+			UpdatedAt:     order.UpdatedAt.String(),
+		}
+
+		orderItems = append(orderItems, response)
+	}
+
+	for len(orderItems) > 0 {
+		// send order items in stream
+		for _, orderItem := range orderItems {
+			if err := stream.Send(&proto.GetStatusResponse{
+				Data:   orderItem,
+				Status: codes.OK.String(),
+			}); err != nil {
+				return status.Errorf(codes.Internal, fmt.Sprintf("Error sending order items: %v\n", err))
+			}
+		}
+		break
+	}
+
+	return nil
+}
+
+func (s *OrderServiceServer) GetDeliveryCode(ctx context.Context, req *proto.GetDeliveryCodeRequest) (*proto.GetDeliveryCodeResponse, error) {
+	orderId := req.GetOrderId()
+	deliveryCode, err := s.Order.GetDeliveryCode(orderId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Error fetching delivery code: %v\n", err))
+	}
+
+	return &proto.GetDeliveryCodeResponse{
+		DeliveryCode: deliveryCode,
+		Status:       codes.OK.String(),
 	}, nil
 }
