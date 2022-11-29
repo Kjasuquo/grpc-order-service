@@ -89,6 +89,7 @@ func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewO
 	}
 
 	deliverCode := helper.DeliveryCode()
+	orderAcceptedTime := time.Now().String()
 
 	order := &models.NewOrder{
 		OrderID:      orderId,
@@ -105,12 +106,13 @@ func (s *OrderServiceServer) CreateNewOrder(ctx context.Context, req *proto.NewO
 				Longitude: longitude,
 			},
 		},
-		CartItems:     cartItems,
-		Status:        "pending",
-		DeliveryCode:  deliverCode,
-		PaymentMethod: paymentMethod,
-		Currency:      currency,
-		DeliveryTime:  "not delivered",
+		CartItems:         cartItems,
+		Status:            "Order Accepted",
+		DeliveryCode:      deliverCode,
+		PaymentMethod:     paymentMethod,
+		Currency:          currency,
+		DeliveryTime:      "not delivered",
+		OrderAcceptedTime: orderAcceptedTime,
 	}
 
 	err := s.Order.CreateNewOrder(order)
@@ -186,14 +188,18 @@ func (s *OrderServiceServer) FetchOrdersByUser(req *proto.NewGetUserOrderRequest
 					Longitude: order.OrderDeliveryAddress.OrderCoordinates.Longitude,
 				},
 			},
-			OrderItems:    cartItems,
-			Status:        order.Status,
-			DeliveryCode:  order.DeliveryCode,
-			PaymentMethod: order.PaymentMethod,
-			Currency:      order.Currency,
-			DeliveryTime:  order.DeliveryTime,
-			CreatedAt:     order.CreatedAt.String(),
-			UpdatedAt:     order.UpdatedAt.String(),
+			OrderItems:            cartItems,
+			Status:                order.Status,
+			DeliveryCode:          order.DeliveryCode,
+			PaymentMethod:         order.PaymentMethod,
+			Currency:              order.Currency,
+			DeliveryTime:          order.DeliveryTime,
+			CreatedAt:             order.CreatedAt.String(),
+			UpdatedAt:             order.UpdatedAt.String(),
+			AcceptanceTime:        order.OrderAcceptedTime,
+			ShopperAssignedTime:   order.ShopperAssignedTime,
+			ShoppingCompletedTime: order.ShoppingCompletedTime,
+			InProgressTime:        order.InProgressTime,
 		}
 
 		orderItems = append(orderItems, response)
@@ -236,31 +242,44 @@ func (s *OrderServiceServer) DeleteUserOrders(ctx context.Context, req *proto.De
 func (s *OrderServiceServer) UpdateOrderStatus(ctx context.Context, req *proto.UpdateOrderStatusRequest) (*proto.UpdateOrderStatusResponse, error) {
 	orderId := req.GetOrderId()
 	sta := req.GetStatus()
-	if sta != "pending" {
-		if sta != "completed" {
-			if sta != "cancelled" {
-				return nil, status.Error(codes.InvalidArgument,
-					"status is invalid")
-			}
-		}
 
-	}
 	if orderId == "" {
 		return nil, status.Error(codes.InvalidArgument,
 			"order ID is required")
 	}
 
-	_, err := s.Order.UpdateOrder(orderId, sta)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "Error updating order status")
-	}
-
-	if sta == "completed" {
+	if sta == "Shopper Assigned" {
+		shopperAssignedTime := time.Now().String()
+		_, err := s.Order.UpdateShopperTime(orderId, shopperAssignedTime)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "Error updating shopper assigned time")
+		}
+	} else if sta == "Shopping Completed" {
+		shoppingCompletedTime := time.Now().String()
+		_, err := s.Order.UpdateShoppingCompletedTime(orderId, shoppingCompletedTime)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "Error updating shopping completed time")
+		}
+	} else if sta == "Delivery In Progress" {
+		deliveryInProgressTime := time.Now().String()
+		_, err := s.Order.UpdateDeliveryInProgressTime(orderId, deliveryInProgressTime)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "Error updating delivery in progress time")
+		}
+	} else if sta == "Delivered" {
 		deliveryTime := time.Now().String()
 		_, err := s.Order.UpdateDeliveryTime(orderId, deliveryTime)
 		if err != nil {
 			return nil, status.Error(codes.Internal, "Error updating delivery time")
 		}
+	} else {
+		return nil, status.Error(codes.InvalidArgument,
+			"status is invalid")
+	}
+
+	_, err := s.Order.UpdateOrder(orderId, sta)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Error updating order status")
 	}
 
 	return &proto.UpdateOrderStatusResponse{
@@ -320,14 +339,18 @@ func (s *OrderServiceServer) FetchAllOrders(req *emptypb.Empty, stream proto.Ord
 					Longitude: order.OrderDeliveryAddress.OrderCoordinates.Longitude,
 				},
 			},
-			OrderItems:    cartItems,
-			Status:        order.Status,
-			DeliveryCode:  order.DeliveryCode,
-			PaymentMethod: order.PaymentMethod,
-			Currency:      order.Currency,
-			DeliveryTime:  order.DeliveryTime,
-			CreatedAt:     order.CreatedAt.String(),
-			UpdatedAt:     order.UpdatedAt.String(),
+			OrderItems:            cartItems,
+			Status:                order.Status,
+			DeliveryCode:          order.DeliveryCode,
+			PaymentMethod:         order.PaymentMethod,
+			Currency:              order.Currency,
+			DeliveryTime:          order.DeliveryTime,
+			CreatedAt:             order.CreatedAt.String(),
+			UpdatedAt:             order.UpdatedAt.String(),
+			AcceptanceTime:        order.OrderAcceptedTime,
+			ShopperAssignedTime:   order.ShopperAssignedTime,
+			ShoppingCompletedTime: order.ShoppingCompletedTime,
+			InProgressTime:        order.InProgressTime,
 		}
 
 		orderItems = append(orderItems, response)
@@ -403,14 +426,18 @@ func (s *OrderServiceServer) FetchOderByStatus(req *proto.GetStatusRequest, stre
 					Longitude: order.OrderDeliveryAddress.OrderCoordinates.Longitude,
 				},
 			},
-			OrderItems:    cartItems,
-			Status:        order.Status,
-			DeliveryCode:  order.DeliveryCode,
-			PaymentMethod: order.PaymentMethod,
-			Currency:      order.Currency,
-			DeliveryTime:  order.DeliveryTime,
-			CreatedAt:     order.CreatedAt.String(),
-			UpdatedAt:     order.UpdatedAt.String(),
+			OrderItems:            cartItems,
+			Status:                order.Status,
+			DeliveryCode:          order.DeliveryCode,
+			PaymentMethod:         order.PaymentMethod,
+			Currency:              order.Currency,
+			DeliveryTime:          order.DeliveryTime,
+			CreatedAt:             order.CreatedAt.String(),
+			UpdatedAt:             order.UpdatedAt.String(),
+			AcceptanceTime:        order.OrderAcceptedTime,
+			ShopperAssignedTime:   order.ShopperAssignedTime,
+			ShoppingCompletedTime: order.ShoppingCompletedTime,
+			InProgressTime:        order.InProgressTime,
 		}
 
 		orderItems = append(orderItems, response)

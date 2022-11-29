@@ -55,6 +55,33 @@ func (postgresDB *PostgresDB) UpdateDeliveryTime(orderID string, deliveryTime st
 	return order, nil
 }
 
+func (postgresDB *PostgresDB) UpdateShopperTime(orderID string, assignedTime string) (*models.NewOrder, error) {
+	order := &models.NewOrder{}
+	err := postgresDB.DB.Model(order).Where("order_id = ?", orderID).Update("shopper_assigned_time", assignedTime).Error
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
+}
+
+func (postgresDB *PostgresDB) UpdateShoppingCompletedTime(orderID string, shoppingCompletedTime string) (*models.NewOrder, error) {
+	order := &models.NewOrder{}
+	err := postgresDB.DB.Model(order).Where("order_id = ?", orderID).Update("shopping_completed_time", shoppingCompletedTime).Error
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
+}
+
+func (postgresDB *PostgresDB) UpdateDeliveryInProgressTime(orderID string, inProgressTime string) (*models.NewOrder, error) {
+	order := &models.NewOrder{}
+	err := postgresDB.DB.Model(order).Where("order_id = ?", orderID).Update("in_progress_time", inProgressTime).Error
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
+}
+
 func (postgresDB *PostgresDB) FetchAllOrders() ([]models.NewOrder, error) {
 	var orders []models.NewOrder
 	if err := postgresDB.DB.Preload("CartItems").Find(&orders).Error; err != nil {

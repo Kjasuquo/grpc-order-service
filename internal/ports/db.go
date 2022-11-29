@@ -11,4 +11,7 @@ type Order interface {
 	FetchUserOrderByStatus(userID, status string) ([]models.NewOrder, error)
 	GetDeliveryCode(orderId string) (int32, error)
 	UpdateDeliveryTime(orderID string, deliveryTime string) (*models.NewOrder, error)
+	UpdateShopperTime(orderID string, assignedTime string) (*models.NewOrder, error)
+	UpdateShoppingCompletedTime(orderID string, shoppingCompletedTime string) (*models.NewOrder, error)
+	UpdateDeliveryInProgressTime(orderID string, inProgressTime string) (*models.NewOrder, error)
 }

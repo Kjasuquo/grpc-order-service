@@ -142,5 +142,9 @@ message OrderProperties{
     string currency = 13;
     string paymentMethod = 14;
     int32 delivery_code = 15;
-    string delivery_time = 16;
+    string acceptance_time = 16;
+    string shopper_assigned_time = 17;
+    string shopping_completed_time = 18;
+    string in_progress_time = 19;
+    string delivery_time = 20;
 }
